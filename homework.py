@@ -122,8 +122,10 @@ def check_homework_verdict(status_work):
 
 
 def parse_status(homework):
-    """Парсим статус домашней работы.
-       Содержащий один из вердиктов словаря HOMEWORK_VERDICTS."""
+    """
+    Парсим статус домашней работы.
+    Содержащий один из вердиктов словаря HOMEWORK_VERDICTS.
+    """
     try:
         homework_name = check_homework_name(homework)
         status_work = check_homework_status(homework)
