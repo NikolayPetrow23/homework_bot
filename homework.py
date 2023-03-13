@@ -1,27 +1,37 @@
 import logging
+import os
 import sys
 import time
 from http import HTTPStatus
 
 import requests
 import telegram
+from dotenv import load_dotenv
 
-from config import bot_token, id_chat, practicum_token
 from exceptions import HttpResponseError, ParseError
 
-PRACTICUM_TOKEN = practicum_token
-TELEGRAM_TOKEN = bot_token
-TELEGRAM_CHAT_ID = id_chat
+load_dotenv()
 
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+TIMESTAMP = int(time.time())
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-
+PARAMS = {"from_date": TIMESTAMP}
 
 HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
+}
+
+RESPONSE = {
+    'url': ENDPOINT,
+    'headers': HEADERS,
+    'params': PARAMS,
 }
 
 
@@ -38,17 +48,13 @@ def check_response_ok(response):
     """Проверка статуса ответа от API."""
     if response.status_code != HTTPStatus.OK:
         logging.error('Статус код API не является ожидаемым!')
-        raise HttpResponseError
+        raise HttpResponseError(response.status_code)
 
 
 def get_api_answer(timestamp):
     """Создание get-запроса к API."""
     try:
-        response = requests.get(
-            ENDPOINT,
-            headers=HEADERS,
-            params={'from_date': timestamp}
-        )
+        response = requests.get(**RESPONSE)
         check_response_ok(response)
 
     except Exception as error:
@@ -58,26 +64,41 @@ def get_api_answer(timestamp):
     return response.json()
 
 
-def check_response(response):
-    """Проверка ответа API на наличие нужных ключей и типов данных."""
-    logging.info('Проверка ответа API')
-
+def check_response_type_dict(response):
+    """Является ли ответ API словарем.."""
     if not isinstance(response, dict):
         message = 'Ответ API не являтеся словарем!'
         logging.error(message)
         raise TypeError(message)
 
+
+def check_right_keys(response):
+    """Проверка на наличие нужных ключей в ответе API."""
     if 'homeworks' not in response and 'current_date' not in response:
         message = 'Нет нужного ключа в ответе API!'
         logging.error(message)
         raise KeyError(message)
 
+
+def check_homeworks_type_list(response):
+    """Является ли ответ API, по ключу 'homeworks' списком.."""
     homeworks = response.get('homeworks')
 
     if not isinstance(homeworks, list):
         message = 'Формат данных по ключу "homeworks", не является списком!'
         logging.error(message)
         raise TypeError(message)
+
+    return homeworks
+
+
+def check_response(response):
+    """Проверка ответа API на наличие нужных ключей и типов данных."""
+    logging.info('Проверка ответа API')
+
+    check_response_type_dict(response)
+    check_right_keys(response)
+    homeworks = check_homeworks_type_list(response)
 
     return homeworks
 
@@ -161,22 +182,20 @@ def main():
         exit()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = 0
     old_status_homework = ''
     old_exception = ''
 
     while True:
 
         try:
-            response_get_api = get_api_answer(timestamp)
-            homeworks = check_response(response_get_api)[0]
+            response_get_api = get_api_answer(TIMESTAMP)
+            homeworks = check_response(response_get_api)
 
             if not homeworks:
-                logging.error('Нет домашних работ')
-                raise IndexError('Нет домашних работ')
+                message = 'Нет домашних работ'
+                logging.error(message)
 
-            else:
-                new_status_homework = parse_status(homeworks)
+            new_status_homework = parse_status(homeworks[0])
 
             if new_status_homework != old_status_homework:
                 message = new_status_homework

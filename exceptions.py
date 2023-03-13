@@ -1,15 +1,11 @@
 class HttpResponseError(Exception):
-    def __init__(self, response):
-        message = (
-            f'Эндпоинт: {response.url}, недоступен!',
-            f'Код ответа {response.status_code}'
+    def status_code(self, text):
+        return(
+            f'Эндпоинт, недоступен!',
+            f'Код ответа {text}'
         )
-        super().__init__(message)
 
 
 class ParseError(Exception):
-    def __init__(self, text):
-        message = (
-            f'Парсинг ответа API: {text}'
-        )
-        super().__init__(message)
+    def message_answer(self, text):
+        return f'Парсинг ответа API: {text}'
