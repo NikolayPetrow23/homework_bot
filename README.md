@@ -18,8 +18,6 @@ python-telegram-bot
 
 ```
 git clone git@github.com:NikolayPetrow23/homework_bot.git
-
-cd api_final_yatube
 ```
 
 Cоздать и активировать виртуальное окружение:
@@ -36,16 +34,10 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Выполнить миграции:
+Запустить бота:
 
 ```
-python manage.py migrate
-```
-
-Запустить проект:
-
-```
-python manage.py runserver
+python homework.py 
 ```
 
 ### Автор
